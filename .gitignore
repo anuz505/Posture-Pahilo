@@ -1,0 +1,4 @@
+/bicep_curls/model
+*.pkl
+*.pickle
+/myvenv
