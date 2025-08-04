@@ -10,6 +10,9 @@ warnings.filterwarnings('ignore')
 from Bicep_module import BicepPoseAnalysis
 import tempfile
 import os
+import time
+import pygame
+import threading
 
 # Configure page
 st.set_page_config(
@@ -21,6 +24,73 @@ st.set_page_config(
 # Initialize MediaPipe
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
+
+# Initialize pygame mixer for audio feedback
+@st.cache_resource
+def initialize_audio():
+    """Initialize pygame mixer for audio feedback"""
+    try:
+        pygame.mixer.init()
+        return True
+    except pygame.error as e:
+        st.warning(f"Could not initialize audio: {e}")
+        return False
+
+# Audio feedback class
+class AudioFeedback:
+    def __init__(self):
+        self.audio_enabled = initialize_audio()
+        self.audio_files = {
+            "PEAK_CONTRACTION": "./audio/peak_contraction.mp3",
+            "LOOSE_UPPER_ARM": "./audio/loose_upper_arm.mp3",
+            "LEAN_BACK": "./audio/lean_back.mp3"
+        }
+        self.last_error_counts = {
+            'left': {"PEAK_CONTRACTION": 0, "LOOSE_UPPER_ARM": 0},
+            'right': {"PEAK_CONTRACTION": 0, "LOOSE_UPPER_ARM": 0}
+        }
+        self.last_posture = "C"
+        
+    def play_audio(self, audio_file):
+        """Play audio file in a separate thread to avoid blocking"""
+        if not self.audio_enabled:
+            return
+            
+        def play():
+            try:
+                if os.path.exists(audio_file):
+                    pygame.mixer.music.load(audio_file)
+                    pygame.mixer.music.play()
+            except pygame.error:
+                pass  # Silently handle audio errors
+                
+        threading.Thread(target=play, daemon=True).start()
+    
+    def check_and_play_error_audio(self, analysis_data):
+        """Check for new errors and play corresponding audio"""
+        if not self.audio_enabled:
+            return
+            
+        # Check left arm errors
+        left_errors = analysis_data['left_errors']
+        for error_type in ['PEAK_CONTRACTION', 'LOOSE_UPPER_ARM']:
+            if left_errors[error_type] > self.last_error_counts['left'][error_type]:
+                self.play_audio(self.audio_files[error_type])
+                
+        # Check right arm errors
+        right_errors = analysis_data['right_errors']
+        for error_type in ['PEAK_CONTRACTION', 'LOOSE_UPPER_ARM']:
+            if right_errors[error_type] > self.last_error_counts['right'][error_type]:
+                self.play_audio(self.audio_files[error_type])
+        
+        # Check posture change (lean back)
+        if analysis_data['posture'] != "C" and self.last_posture == "C":
+            self.play_audio(self.audio_files["LEAN_BACK"])
+        
+        # Update last known error counts
+        self.last_error_counts['left'] = left_errors.copy()
+        self.last_error_counts['right'] = right_errors.copy()
+        self.last_posture = analysis_data['posture']
 
 # Constants
 IMPORTANT_LMS = [
@@ -121,39 +191,39 @@ def process_frame(image, pose, left_arm_analysis, right_arm_analysis, input_scal
         
         posture = predicted_class if class_prediction_probability >= POSTURE_ERROR_THRESHOLD else "C"
         
-        # Add overlay information
-        cv2.rectangle(image, (0, 0), (500, 40), (245, 117, 16), -1)
+        # # Add overlay information
+        # cv2.rectangle(image, (0, 0), (500, 40), (245, 117, 16), -1)
         
-        # Display counters
-        cv2.putText(image, "RIGHT", (15, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
-        cv2.putText(image, str(right_arm_analysis.counter) if right_arm_analysis.is_visible else "UNK", (10, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+        # # Display counters
+        # cv2.putText(image, "RIGHT", (15, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        # cv2.putText(image, str(right_arm_analysis.counter) if right_arm_analysis.is_visible else "UNK", (10, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
         
-        cv2.putText(image, "LEFT", (95, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
-        cv2.putText(image, str(left_arm_analysis.counter) if left_arm_analysis.is_visible else "UNK", (100, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+        # cv2.putText(image, "LEFT", (95, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        # cv2.putText(image, str(left_arm_analysis.counter) if left_arm_analysis.is_visible else "UNK", (100, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
         
-        # Display errors
-        cv2.putText(image, "R_PC", (165, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
-        cv2.putText(image, str(right_arm_analysis.detected_errors["PEAK_CONTRACTION"]), (160, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(image, "R_LUA", (225, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
-        cv2.putText(image, str(right_arm_analysis.detected_errors["LOOSE_UPPER_ARM"]), (220, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+        # # Display errors
+        # cv2.putText(image, "R_PC", (165, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        # cv2.putText(image, str(right_arm_analysis.detected_errors["PEAK_CONTRACTION"]), (160, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+        # cv2.putText(image, "R_LUA", (225, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        # cv2.putText(image, str(right_arm_analysis.detected_errors["LOOSE_UPPER_ARM"]), (220, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
         
-        cv2.putText(image, "L_PC", (300, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
-        cv2.putText(image, str(left_arm_analysis.detected_errors["PEAK_CONTRACTION"]), (295, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(image, "L_LUA", (380, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
-        cv2.putText(image, str(left_arm_analysis.detected_errors["LOOSE_UPPER_ARM"]), (375, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+        # cv2.putText(image, "L_PC", (300, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        # cv2.putText(image, str(left_arm_analysis.detected_errors["PEAK_CONTRACTION"]), (295, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+        # cv2.putText(image, "L_LUA", (380, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        # cv2.putText(image, str(left_arm_analysis.detected_errors["LOOSE_UPPER_ARM"]), (375, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
         
-        # Posture info
-        cv2.putText(image, "LB", (460, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
-        cv2.putText(image, str(f"{posture}, {predicted_class}, {class_prediction_probability}"), (440, 30), cv2.FONT_HERSHEY_COMPLEX, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
+        # # Posture info
+        # cv2.putText(image, "LB", (460, 12), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        # cv2.putText(image, str(f"{posture}, {predicted_class}, {class_prediction_probability}"), (440, 30), cv2.FONT_HERSHEY_COMPLEX, 0.3, (255, 255, 255), 1, cv2.LINE_AA)
         
-        # Display angles
-        if left_arm_analysis.is_visible:
-            cv2.putText(image, str(left_bicep_curl_angle), tuple(np.multiply(left_arm_analysis.elbow, video_dimensions).astype(int)), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-            cv2.putText(image, str(left_ground_upper_arm_angle), tuple(np.multiply(left_arm_analysis.shoulder, video_dimensions).astype(int)), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+        # # Display angles
+        # if left_arm_analysis.is_visible:
+        #     cv2.putText(image, str(left_bicep_curl_angle), tuple(np.multiply(left_arm_analysis.elbow, video_dimensions).astype(int)), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+        #     cv2.putText(image, str(left_ground_upper_arm_angle), tuple(np.multiply(left_arm_analysis.shoulder, video_dimensions).astype(int)), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
         
-        if right_arm_analysis.is_visible:
-            cv2.putText(image, str(right_bicep_curl_angle), tuple(np.multiply(right_arm_analysis.elbow, video_dimensions).astype(int)), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 0), 1, cv2.LINE_AA)
-            cv2.putText(image, str(right_ground_upper_arm_angle), tuple(np.multiply(right_arm_analysis.shoulder, video_dimensions).astype(int)), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 0), 1, cv2.LINE_AA)
+        # if right_arm_analysis.is_visible:
+        #     cv2.putText(image, str(right_bicep_curl_angle), tuple(np.multiply(right_arm_analysis.elbow, video_dimensions).astype(int)), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 0), 1, cv2.LINE_AA)
+        #     cv2.putText(image, str(right_ground_upper_arm_angle), tuple(np.multiply(right_arm_analysis.shoulder, video_dimensions).astype(int)), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 0), 1, cv2.LINE_AA)
         
         # Return analysis data
         analysis_data = {
@@ -183,9 +253,20 @@ def main():
     # Initialize analysis objects
     left_arm_analysis, right_arm_analysis = initialize_analysis_objects()
     
+    # Initialize audio feedback
+    audio_feedback = AudioFeedback()
+    
     # Sidebar controls
     st.sidebar.title("Settings")
     analysis_mode = st.sidebar.radio("Choose Analysis Mode", ["Video Upload", "Webcam (Live)"])
+    
+    # Audio settings
+    if audio_feedback.audio_enabled:
+        st.sidebar.success("🔊 Audio feedback enabled")
+        st.sidebar.info("Audio will play when errors are detected in real-time mode")
+    else:
+        st.sidebar.warning("🔇 Audio feedback disabled")
+        st.sidebar.info("Install pygame for audio feedback: pip install pygame")
     
     if analysis_mode == "Video Upload":
         uploaded_file = st.file_uploader("Upload a video file", type=['mp4', 'avi', 'mov', 'mkv'])
@@ -226,7 +307,7 @@ def main():
                             )
                             
                             # Display processed frame
-                            video_placeholder.image(processed_frame, channels="BGR", use_column_width=True)
+                            video_placeholder.image(processed_frame, channels="BGR", use_container_width=True)
                             
                             # Display stats
                             if analysis_data:
@@ -245,7 +326,14 @@ def main():
                         frame_count += 1
                 
                 cap.release()
-                os.unlink(tfile.name)  # Clean up temp file
+                # Clean up temp file with error handling for Windows
+                try:
+                    import time
+                    time.sleep(0.1)  # Small delay to ensure file handle is released
+                    os.unlink(tfile.name)
+                except PermissionError:
+                    # File is still in use, mark for deletion on reboot (Windows)
+                    st.warning("Temporary file cleanup will happen automatically.")
     
     elif analysis_mode == "Webcam (Live)":
         st.subheader("Live Webcam Analysis")
@@ -265,6 +353,9 @@ def main():
         stop_button = st.button("Stop Analysis")
         
         if start_button:
+            # Reset audio feedback for new session
+            audio_feedback = AudioFeedback()
+            
             cap = cv2.VideoCapture(0)
             
             with mp_pose.Pose(min_detection_confidence=0.8, min_tracking_confidence=0.8) as pose:
@@ -280,10 +371,13 @@ def main():
                     )
                     
                     # Display processed frame
-                    video_placeholder.image(processed_frame, channels="BGR", use_column_width=True)
+                    video_placeholder.image(processed_frame, channels="BGR", use_container_width=True)
                     
-                    # Display stats
+                    # Display stats and handle audio feedback
                     if analysis_data:
+                        # Play audio feedback for new errors
+                        audio_feedback.check_and_play_error_audio(analysis_data)
+                        
                         with stats_placeholder.container():
                             st.metric("Left Arm Reps", analysis_data['left_counter'])
                             st.metric("Right Arm Reps", analysis_data['right_counter'])
@@ -317,11 +411,15 @@ def main():
         3. View the processed video with pose detection overlays
         4. Check the analysis results for rep counts and form errors
         
-        **Webcam Mode:**
+        **Webcam Mode (with Audio Feedback):**
         1. Click 'Start Analysis' to begin live analysis
         2. Position yourself in front of the camera
         3. Perform bicep curls and see real-time feedback
-        4. Click 'Stop Analysis' to end the session
+        4. Listen for audio cues when form errors are detected:
+           - Peak contraction errors
+           - Loose upper arm movement
+           - Poor posture (lean back)
+        5. Click 'Stop Analysis' to end the session
         
         **Analysis Information:**
         - **Reps:** Number of completed bicep curls for each arm
@@ -329,6 +427,12 @@ def main():
         - **Loose Upper Arm Error:** Indicates if your upper arm is moving too much
         - **Posture:** Overall body posture analysis (C = Correct)
         - **Confidence:** How confident the model is in its posture prediction
+        
+        **Audio Feedback:**
+        Audio feedback is available during live webcam analysis and will play when:
+        - A new peak contraction error is detected
+        - A new loose upper arm error is detected  
+        - Your posture changes from correct to incorrect (lean back)
         """)
 
 if __name__ == "__main__":
