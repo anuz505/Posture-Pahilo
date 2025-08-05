@@ -2,3 +2,4 @@
 *.pkl
 *.pickle
 /myvenv
+/bicep_curls/data
