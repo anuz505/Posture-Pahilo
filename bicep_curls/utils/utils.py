@@ -16,17 +16,6 @@ def rescale_frame(frame, percent=50):
     return cv2.resize(frame, dim, interpolation =cv2.INTER_AREA)
 
 
-def save_frame_as_image(frame, message: str = None):
-    '''
-    Save a frame as image to display the error
-    '''
-    now = datetime.datetime.now()
-
-    if message:
-        cv2.putText(frame, message, (50, 150), cv2.FONT_HERSHEY_COMPLEX, 0.4, (0, 0, 0), 1, cv2.LINE_AA)
-        
-    print("Saving ...")
-    cv2.imwrite(f"../data/logs/bicep_{now}.jpg", frame)
 
 
 def calculate_angle(point1: list, point2: list, point3: list) -> float:
