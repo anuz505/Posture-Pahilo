@@ -48,9 +48,6 @@ A comprehensive AI-powered exercise form analysis application that uses computer
    streamlit run main_app.py
    ```
 
-4. **Open in browser**
-   - The application will automatically open in your default browser
-   - If not, navigate to `http://localhost:8501`
 
 ## 📋 Requirements
 
@@ -150,14 +147,6 @@ Each exercise provides specific form analysis:
 - **OpenCV**: Video processing and computer vision
 - **NumPy/Pandas**: Data processing and analysis
 
-### Models
-
-Each exercise uses specialized machine learning models:
-
-- **Random Forest**: Primary classification
-- **KNN**: Secondary analysis
-- **Logistic Regression**: Form scoring
-- **StandardScaler**: Feature normalization
 
 ### Audio Feedback
 
@@ -210,46 +199,7 @@ Each exercise uses specialized machine learning models:
    - Wear contrasting clothing
    - Minimize background clutter
 
-## 📊 Performance Metrics
 
-### Accuracy Rates
-
-- **Squat form detection**: ~92% accuracy
-- **Deadlift safety analysis**: ~89% accuracy
-- **Bicep curl technique**: ~94% accuracy
-
-### Processing Speed
-
-- **Real-time analysis**: 15-30 FPS (depending on hardware)
-- **Video processing**: 1x speed with full analysis
-- **Model inference**: <50ms per frame
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/new-exercise`)
-3. Commit your changes (`git commit -am 'Add new exercise analysis'`)
-4. Push to the branch (`git push origin feature/new-exercise`)
-5. Create a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- **MediaPipe Team** for the pose estimation framework
-- **Streamlit Team** for the excellent web app framework
-- **OpenCV Community** for computer vision tools
-- **Scikit-learn Contributors** for machine learning capabilities
-
-## 📞 Support
-
-For support, questions, or suggestions:
-
-- Open an issue on GitHub
-- Contact the development team
-- Check the troubleshooting section above
 
 ---
 
