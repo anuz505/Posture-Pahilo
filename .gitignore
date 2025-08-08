@@ -1,5 +1,1 @@
-/bicep_curls/model
-*.pkl
-*.pickle
 /myvenv
-/bicep_curls/data
