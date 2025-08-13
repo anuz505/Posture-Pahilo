@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import pickle
+import os
 from utils import extract_important_keypoints
 import warnings
 warnings.filterwarnings('ignore')
@@ -30,12 +31,16 @@ HEADERS = ["label"] # Label column
 for lm in IMPORTANT_LMS:
     HEADERS += [f"{lm.lower()}_x", f"{lm.lower()}_y", f"{lm.lower()}_z", f"{lm.lower()}_v"]
 
+# Get the directory where this script is located
+current_dir = os.path.dirname(os.path.abspath(__file__))
+model_dir = os.path.join(current_dir, "model")
+
 # Load input scaler
-with open("./model/input_scaler.pkl", "rb") as f:
+with open(os.path.join(model_dir, "input_scaler.pkl"), "rb") as f:
     input_scaler = pickle.load(f)
 
 # Load model
-with open("./model/KNN_model.pkl", "rb") as f:
+with open(os.path.join(model_dir, "KNN_model.pkl"), "rb") as f:
     sklearn_model = pickle.load(f)
 
 cap = cv2.VideoCapture(0)

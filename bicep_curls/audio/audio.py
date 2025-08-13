@@ -15,11 +15,21 @@ class AudioFeedback:
     
     def __init__(self):
         self.audio_enabled = initialize_audio()
+        # Get the directory where this script is located
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        audio_dir = os.path.join(current_dir)
+        
         self.audio_files = {
-            "PEAK_CONTRACTION": "./audio/peak_contraction.mp3",
-            "LOOSE_UPPER_ARM": "./audio/loose_upper_arm.mp3",
-            "LEAN_BACK": "./audio/lean_back.mp3"
+            "PEAK_CONTRACTION": os.path.join(audio_dir, "peak_contraction.mp3"),
+            "LOOSE_UPPER_ARM": os.path.join(audio_dir, "loose_upper_arm.mp3"),
+            "LEAN_BACK": os.path.join(audio_dir, "lean_back.mp3")
         }
+        
+        # Verify audio files exist
+        for error_type, file_path in self.audio_files.items():
+            if not os.path.exists(file_path):
+                print(f"Warning: Audio file not found: {file_path}")
+        
         self.last_error_counts = {
             'left': {"PEAK_CONTRACTION": 0, "LOOSE_UPPER_ARM": 0},
             'right': {"PEAK_CONTRACTION": 0, "LOOSE_UPPER_ARM": 0}
