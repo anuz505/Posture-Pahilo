@@ -1,5 +1,4 @@
 # Core dependencies for AI Exercise Form Analyzer
-python_version == "3.11"
 streamlit>=1.28.0
 mediapipe>=0.10.0
 opencv-python>=4.8.0
