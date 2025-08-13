@@ -48,9 +48,11 @@ for lm in IMPORTANT_LMS:
 @st.cache_resource
 def load_models():
     try:
-        with open("./model/input_scaler.pkl", "rb") as f:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        model_dir = os.path.join(base_dir,"model")
+        with open(os.path.join(model_dir,"input_scaler.pkl"), "rb") as f:
             input_scaler = pickle.load(f)
-        with open("./model/KNN_model.pkl", "rb") as f:
+        with open(os.path.join(model_dir,"KNN_model.pkl"), "rb") as f:
             sklearn_model = pickle.load(f)
         return input_scaler, sklearn_model
     except FileNotFoundError as e:
